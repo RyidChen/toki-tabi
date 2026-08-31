@@ -4,6 +4,7 @@ import FlightSearchForm from "../components/FlightSearchForm.vue";
 import { useFlightSearch } from "../composables/useFlightSearch";
 import { searchMockFlights } from "../data/mockFlights";
 
+// 首頁只負責組合元件；搜尋狀態與流程交由 composable 統一管理。
 const { sortedOffers, loading, error, hasSearched, sortOption, search } =
   useFlightSearch(searchMockFlights);
 </script>

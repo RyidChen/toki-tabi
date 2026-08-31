@@ -10,6 +10,7 @@ const emit = defineEmits<{
   submit: [criteria: SearchCriteria];
 }>();
 
+// 使用本地時間組合日期，避免 UTC 時差讓日期欄位提前或延後一天。
 function dateInputValue(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -24,6 +25,8 @@ function daysFromToday(days: number): string {
 }
 
 const today = dateInputValue(new Date());
+
+// reactive 適合集中管理多個彼此相關的表單欄位。
 const form = reactive<SearchCriteria>({
   tripType: "roundTrip",
   origin: "TPE",
@@ -35,10 +38,12 @@ const form = reactive<SearchCriteria>({
 });
 const errors = ref<Record<string, string>>({});
 
+// 出發地決定目的地清單，確保搜尋一定是台灣與日本之間的航線。
 const destinationAirports = computed(() =>
   getAirport(form.origin).country === "TW" ? JAPAN_AIRPORTS : TAIWAN_AIRPORTS,
 );
 
+// 切換出發國家後，如果原目的地已不合法，就自動選擇另一國的第一個機場。
 watch(
   () => form.origin,
   () => {
@@ -53,6 +58,7 @@ watch(
   },
 );
 
+// 單程不需要回程日期，同時清除先前可能留下的錯誤訊息。
 watch(
   () => form.tripType,
   (tripType) => {
@@ -78,6 +84,7 @@ async function submitForm(): Promise<void> {
   const firstInvalidField = Object.keys(errors.value)[0];
 
   if (firstInvalidField) {
+    // 等待錯誤訊息更新到 DOM 後，再把焦點移到第一個錯誤欄位。
     await nextTick();
     document
       .querySelector<HTMLElement>(`[name="${firstInvalidField}"]`)
@@ -85,6 +92,7 @@ async function submitForm(): Promise<void> {
     return;
   }
 
+  // 傳出普通物件，避免父元件直接取得並修改表單的 reactive Proxy。
   emit("submit", { ...form });
 }
 

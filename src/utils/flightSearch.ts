@@ -17,6 +17,7 @@ export function validateCriteria(
   criteria: SearchCriteria,
   today = new Date().toISOString().slice(0, 10),
 ): Record<string, string> {
+  // 以欄位名稱作為 key，讓表單能將訊息顯示在對應欄位旁。
   const errors: Record<string, string> = {};
 
   if (!isCrossCountryRoute(criteria.origin, criteria.destination)) {
@@ -46,6 +47,7 @@ export function filterOffers(
   offers: readonly FlightOffer[],
   criteria: SearchCriteria,
 ): FlightOffer[] {
+  // 展示資料未依日期切分，目前只篩選航線、直飛條件與是否包含回程。
   return offers.filter(
     (offer) =>
       offer.outbound.origin === criteria.origin &&
@@ -59,6 +61,7 @@ export function sortOffers(
   offers: readonly FlightOffer[],
   option: SortOption,
 ): FlightOffer[] {
+  // 先複製陣列，避免 Array.sort() 直接改動 Vue 正在追蹤的原始資料。
   return [...offers].sort((a, b) => {
     if (option === "price") return a.priceTwd - b.priceTwd;
     if (option === "duration") {

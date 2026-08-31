@@ -16,6 +16,7 @@ const emit = defineEmits<{
   "update:sortOption": [value: SortOption];
 }>();
 
+// 這兩個 computed 只在有結果時使用，用來標示最低價與飛行時間最短的航班。
 const cheapestPrice = computed(() =>
   Math.min(...props.offers.map((offer) => offer.priceTwd)),
 );
@@ -30,6 +31,7 @@ const fastestDuration = computed(() =>
     aria-live="polite"
     aria-labelledby="results-title"
   >
+    <!-- 狀態依優先順序互斥顯示：載入、錯誤、尚未搜尋、無結果、成功結果。 -->
     <div v-if="loading" class="state-card" role="status">
       <span class="loading-mark" aria-hidden="true"></span>
       <div>
