@@ -260,7 +260,7 @@ function buildOffer(
   template: RouteTemplate,
   criteria: SearchCriteria,
 ): FlightOffer {
-  return {
+  const offer: FlightOffer = {
     id: `${template.id}-${criteria.departureDate}`,
     airlineCode: template.airlineCode,
     airlineName: template.airlineName,
@@ -273,23 +273,24 @@ function buildOffer(
       template.durationMinutes,
       template.stops,
     ),
-    ...(criteria.tripType === "roundTrip" && criteria.returnDate
-      ? {
-          inbound: buildSegment(
-            template.destination,
-            template.origin,
-            criteria.returnDate,
-            template.returnDepartureMinutes,
-            template.durationMinutes + 10,
-            template.stops,
-          ),
-        }
-      : {}),
   };
+
+  if (criteria.tripType === "roundTrip" && criteria.returnDate) {
+    offer.inbound = buildSegment(
+      template.destination,
+      template.origin,
+      criteria.returnDate,
+      template.returnDepartureMinutes,
+      template.durationMinutes + 10,
+      template.stops,
+    );
+  }
+
+  return offer;
 }
 
 export const searchMockFlights: SearchFlights = async (criteria) => {
-  await new Promise((resolve) => window.setTimeout(resolve, 450));
+  await new Promise((resolve) => setTimeout(resolve, 450));
   const offers = MOCK_ROUTE_TEMPLATES.map((template) =>
     buildOffer(template, criteria),
   );

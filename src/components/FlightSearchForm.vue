@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from "vue";
 import { JAPAN_AIRPORTS, TAIWAN_AIRPORTS, getAirport } from "../data/airports";
-import type { AirportCode, SearchCriteria } from "../types/flight";
+import type { Airport, SearchCriteria } from "../types/flight";
+import { dateInputValue } from "../utils/date";
 import { validateCriteria } from "../utils/flightSearch";
 
 withDefaults(defineProps<{ loading?: boolean }>(), { loading: false });
@@ -10,21 +11,14 @@ const emit = defineEmits<{
   submit: [criteria: SearchCriteria];
 }>();
 
-// 使用本地時間組合日期，避免 UTC 時差讓日期欄位提前或延後一天。
-function dateInputValue(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function daysFromToday(days: number): string {
   const date = new Date();
   date.setDate(date.getDate() + days);
   return dateInputValue(date);
 }
 
-const today = dateInputValue(new Date());
+const today = ref(dateInputValue(new Date()));
+const formElement = ref<HTMLFormElement | null>(null);
 
 // reactive 適合集中管理多個彼此相關的表單欄位。
 const form = reactive<SearchCriteria>({
@@ -80,14 +74,15 @@ function swapAirports(): void {
 }
 
 async function submitForm(): Promise<void> {
-  errors.value = validateCriteria(form, today);
+  today.value = dateInputValue(new Date());
+  errors.value = validateCriteria(form, today.value);
   const firstInvalidField = Object.keys(errors.value)[0];
 
   if (firstInvalidField) {
     // 等待錯誤訊息更新到 DOM 後，再把焦點移到第一個錯誤欄位。
     await nextTick();
-    document
-      .querySelector<HTMLElement>(`[name="${firstInvalidField}"]`)
+    formElement.value
+      ?.querySelector<HTMLElement>(`[name="${firstInvalidField}"]`)
       ?.focus();
     return;
   }
@@ -96,17 +91,21 @@ async function submitForm(): Promise<void> {
   emit("submit", { ...form });
 }
 
-function airportLabel(code: AirportCode): string {
-  const airport = getAirport(code);
+function airportLabel(airport: Airport): string {
   return `${airport.city} ${airport.name} (${airport.code})`;
 }
 </script>
 
 <template>
-  <form class="search-card" novalidate @submit.prevent="submitForm">
+  <form
+    ref="formElement"
+    class="search-card"
+    novalidate
+    @submit.prevent="submitForm"
+  >
     <fieldset class="trip-type" aria-label="行程類型">
       <legend class="sr-only">行程類型</legend>
-      <label class="radio-pill">
+      <label class="trip-option">
         <input
           v-model="form.tripType"
           type="radio"
@@ -115,7 +114,7 @@ function airportLabel(code: AirportCode): string {
         />
         來回
       </label>
-      <label class="radio-pill">
+      <label class="trip-option">
         <input
           v-model="form.tripType"
           type="radio"
@@ -128,9 +127,10 @@ function airportLabel(code: AirportCode): string {
 
     <div class="route-fields">
       <label class="field">
-        <span>從哪裡出發？</span>
+        <span>出發地</span>
         <select
           v-model="form.origin"
+          class="form-control"
           name="origin"
           @change="clearError('origin')"
         >
@@ -140,7 +140,7 @@ function airportLabel(code: AirportCode): string {
               :key="airport.code"
               :value="airport.code"
             >
-              {{ airportLabel(airport.code) }}
+              {{ airportLabel(airport) }}
             </option>
           </optgroup>
           <optgroup label="日本">
@@ -149,7 +149,7 @@ function airportLabel(code: AirportCode): string {
               :key="airport.code"
               :value="airport.code"
             >
-              {{ airportLabel(airport.code) }}
+              {{ airportLabel(airport) }}
             </option>
           </optgroup>
         </select>
@@ -166,10 +166,12 @@ function airportLabel(code: AirportCode): string {
       </button>
 
       <label class="field">
-        <span>想飛去哪裡？</span>
+        <span>目的地</span>
         <select
           v-model="form.destination"
+          class="form-control"
           name="destination"
+          :aria-invalid="Boolean(errors.destination)"
           :aria-describedby="
             errors.destination ? 'destination-error' : undefined
           "
@@ -180,7 +182,7 @@ function airportLabel(code: AirportCode): string {
             :key="airport.code"
             :value="airport.code"
           >
-            {{ airportLabel(airport.code) }}
+            {{ airportLabel(airport) }}
           </option>
         </select>
         <small
@@ -194,14 +196,19 @@ function airportLabel(code: AirportCode): string {
       </label>
     </div>
 
-    <div class="date-fields">
+    <div
+      class="date-fields"
+      :class="{ 'date-fields--one-way': form.tripType === 'oneWay' }"
+    >
       <label class="field">
         <span>去程日期</span>
         <input
           v-model="form.departureDate"
+          class="form-control"
           name="departureDate"
           type="date"
           :min="today"
+          :aria-invalid="Boolean(errors.departureDate)"
           :aria-describedby="
             errors.departureDate ? 'departureDate-error' : undefined
           "
@@ -221,9 +228,11 @@ function airportLabel(code: AirportCode): string {
         <span>回程日期</span>
         <input
           v-model="form.returnDate"
+          class="form-control"
           name="returnDate"
           type="date"
           :min="form.departureDate"
+          :aria-invalid="Boolean(errors.returnDate)"
           :aria-describedby="errors.returnDate ? 'returnDate-error' : undefined"
           @input="clearError('returnDate')"
         />
@@ -241,10 +250,13 @@ function airportLabel(code: AirportCode): string {
         <span>成人</span>
         <input
           v-model.number="form.adults"
+          class="form-control"
           name="adults"
           type="number"
           min="1"
           max="9"
+          step="1"
+          :aria-invalid="Boolean(errors.adults)"
           :aria-describedby="errors.adults ? 'adults-error' : undefined"
           @input="clearError('adults')"
         />
@@ -270,3 +282,202 @@ function airportLabel(code: AirportCode): string {
     </div>
   </form>
 </template>
+
+<style scoped>
+.search-card {
+  display: grid;
+  gap: 22px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.trip-type {
+  display: flex;
+  width: fit-content;
+  gap: 4px;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: #edf0ef;
+}
+
+.trip-option {
+  position: relative;
+  display: grid;
+  min-width: 76px;
+  min-height: 44px;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.trip-option:has(input:checked) {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(19, 42, 56, 0.1);
+}
+
+.trip-option:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.trip-option input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+}
+
+.route-fields,
+.date-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.route-fields {
+  grid-template-columns: minmax(0, 1fr) 52px minmax(0, 1fr);
+  align-items: end;
+}
+
+.date-fields {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 130px;
+}
+
+.date-fields--one-way {
+  grid-template-columns: minmax(0, 1fr) 130px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.field-error::before {
+  content: "!";
+  font-weight: 900;
+}
+
+.swap-button {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 2px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--teal);
+  font-size: 22px;
+  transition: background-color 180ms ease;
+}
+
+.swap-button:hover {
+  background: var(--teal-soft);
+}
+
+.search-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-top: 2px;
+}
+
+.checkbox-field {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.checkbox-field input {
+  width: 19px;
+  height: 19px;
+  accent-color: var(--teal);
+}
+
+.search-button {
+  min-width: 180px;
+  min-height: 52px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 14px;
+  background: #eb6545;
+  box-shadow: 0 10px 24px rgba(235, 101, 69, 0.24);
+  color: white;
+  font-weight: 800;
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.search-button:hover:not(:disabled) {
+  background: #c94c30;
+  box-shadow: 0 12px 28px rgba(201, 76, 48, 0.3);
+  transform: translateY(-2px);
+}
+
+.search-button:active:not(:disabled) {
+  box-shadow: 0 6px 16px rgba(201, 76, 48, 0.24);
+  transform: translateY(0);
+}
+
+@media (max-width: 760px) {
+
+  .search-card {
+    gap: 20px;
+    padding: 20px;
+    border-radius: var(--radius-lg);
+  }
+
+  .route-fields,
+  .date-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .swap-button {
+    justify-self: center;
+    margin: -2px 0;
+    transform: rotate(90deg);
+  }
+
+  .search-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .search-button {
+    width: 100%;
+  }
+}
+</style>

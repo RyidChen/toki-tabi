@@ -1,4 +1,5 @@
 import { getAirport } from "../data/airports";
+import { dateInputValue, isValidDate } from "./date";
 import type {
   AirportCode,
   FlightOffer,
@@ -15,7 +16,7 @@ export function isCrossCountryRoute(
 
 export function validateCriteria(
   criteria: SearchCriteria,
-  today = new Date().toISOString().slice(0, 10),
+  today = dateInputValue(new Date()),
 ): Record<string, string> {
   // 以欄位名稱作為 key，讓表單能將訊息顯示在對應欄位旁。
   const errors: Record<string, string> = {};
@@ -23,21 +24,24 @@ export function validateCriteria(
   if (!isCrossCountryRoute(criteria.origin, criteria.destination)) {
     errors.destination = "起訖機場必須分屬台灣與日本";
   }
-  if (criteria.departureDate < today) {
+  if (!isValidDate(criteria.departureDate)) {
+    errors.departureDate = "請選擇有效的去程日期";
+  } else if (criteria.departureDate < today) {
     errors.departureDate = "去程日期不可早於今天";
   }
-  if (criteria.tripType === "roundTrip" && !criteria.returnDate) {
-    errors.returnDate = "請選擇回程日期";
+  if (criteria.tripType === "roundTrip") {
+    if (!isValidDate(criteria.returnDate)) {
+      errors.returnDate = "請選擇有效的回程日期";
+    } else if (criteria.returnDate < criteria.departureDate) {
+      errors.returnDate = "回程日期不可早於去程日期";
+    }
   }
   if (
-    criteria.tripType === "roundTrip" &&
-    criteria.returnDate &&
-    criteria.returnDate < criteria.departureDate
+    !Number.isInteger(criteria.adults) ||
+    criteria.adults < 1 ||
+    criteria.adults > 9
   ) {
-    errors.returnDate = "回程日期不可早於去程日期";
-  }
-  if (criteria.adults < 1 || criteria.adults > 9) {
-    errors.adults = "成人乘客數必須介於 1 到 9";
+    errors.adults = "成人乘客數必須是 1 到 9 的整數";
   }
 
   return errors;
@@ -48,13 +52,23 @@ export function filterOffers(
   criteria: SearchCriteria,
 ): FlightOffer[] {
   // 展示資料未依日期切分，目前只篩選航線、直飛條件與是否包含回程。
-  return offers.filter(
-    (offer) =>
-      offer.outbound.origin === criteria.origin &&
-      offer.outbound.destination === criteria.destination &&
-      (!criteria.directOnly || offer.outbound.stops === 0) &&
-      (criteria.tripType === "oneWay" || Boolean(offer.inbound)),
-  );
+  return offers.filter(({ outbound, inbound }) => {
+    if (
+      outbound.origin !== criteria.origin ||
+      outbound.destination !== criteria.destination
+    ) {
+      return false;
+    }
+    if (criteria.tripType === "roundTrip" && !inbound) return false;
+
+    if (criteria.directOnly) {
+      if (outbound.stops !== 0) return false;
+      if (criteria.tripType === "roundTrip" && inbound?.stops !== 0)
+        return false;
+    }
+
+    return true;
+  });
 }
 
 export function sortOffers(

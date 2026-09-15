@@ -10,9 +10,10 @@
 - 一鍵交換出發地與目的地
 - 支援單程與來回行程
 - 日期、成人乘客數與跨國航線驗證
-- 僅顯示直飛航班
-- 依價格、飛行時間或出發時間排序
-- 標示最便宜與最快航班
+- 僅顯示直飛航班（來回行程會同時檢查去程與回程）
+- 顯示去程與回程時刻，時間以各機場當地時間為準
+- 依價格、去程飛行時間或去程出發時間排序
+- 標示最低價與去程最短的航班
 - 搜尋中、無結果與錯誤狀態
 - 響應式版面與基本無障礙操作
 
@@ -22,8 +23,6 @@
 - TypeScript
 - Vite
 - Vue Router
-- Pinia
-- Vant
 - CSS
 
 ## 本機啟動
@@ -43,9 +42,8 @@ src/
 ├─ composables/      # 航班搜尋狀態與非同步流程
 ├─ data/             # 機場與模擬航班資料
 ├─ router/           # Vue Router 設定
-├─ stores/           # Pinia stores
 ├─ types/            # 航班領域型別
-├─ utils/            # 搜尋驗證、篩選與排序邏輯
+├─ utils/            # 日期處理、搜尋驗證、篩選與排序
 ├─ views/            # 頁面元件
 ├─ App.vue
 └─ main.ts
@@ -54,12 +52,21 @@ src/
 ## 資料流程
 
 ```text
-搜尋表單
-  → useFlightSearch
-  → 本地模擬航班資料
-  → 驗證、篩選與排序
-  → 航班結果畫面
+FlightSearchForm：編輯欄位 → 驗證 → 傳出搜尋條件
+  → useFlightSearch：管理載入、成功與失敗狀態
+  → searchMockFlights：依日期產生展示航班，再篩選航線與直飛條件
+  → useFlightSearch：依排序選項推導結果
+  → FlightResults：顯示狀態，交給 FlightCard 呈現航班
 ```
+
+## 檢查
+
+```bash
+npm test
+npm run build
+```
+
+測試使用 Node.js 內建測試工具，透過現有 Vite 載入 TypeScript，涵蓋日期、乘客數、直飛篩選、排序、台日時差與搜尋失敗後重試。建置會先做 TypeScript 型別檢查。
 
 ## 專案狀態
 

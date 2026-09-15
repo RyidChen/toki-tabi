@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import type { FlightOffer, SortOption } from "../types/flight";
 import FlightCard from "./FlightCard.vue";
-import FlightFilters from "./FlightFilters.vue";
+import FlightSort from "./FlightSort.vue";
 
 const props = defineProps<{
   offers: FlightOffer[];
@@ -35,8 +35,8 @@ const fastestDuration = computed(() =>
     <div v-if="loading" class="state-card" role="status">
       <span class="loading-mark" aria-hidden="true"></span>
       <div>
-        <h2 id="results-title">正在尋找航班</h2>
-        <p>整理不同時段和價格，馬上就好。</p>
+        <h2 id="results-title">搜尋中</h2>
+        <p>正在讀取航班資料。</p>
       </div>
     </div>
 
@@ -60,17 +60,21 @@ const fastestDuration = computed(() =>
       <span class="state-icon" aria-hidden="true">—</span>
       <div>
         <h2 id="results-title">找不到符合條件的航班</h2>
-        <p>試著更換日期、目的地，或取消「僅顯示直飛」。</p>
+        <p>
+          目前只提供部分航線的展示資料。試著更換機場，或取消「僅顯示直飛」。
+        </p>
       </div>
     </div>
 
     <template v-else>
-      <div class="results-heading">
+      <div class="section-heading">
         <div>
-          <p class="eyebrow">SEARCH RESULTS</p>
-          <h2 id="results-title">找到 {{ offers.length }} 個航班選擇</h2>
+          <h2 id="results-title">{{ offers.length }} 筆航班</h2>
+          <p class="results-note">
+            時間皆為機場當地時間，價格為每位成人的展示票價。
+          </p>
         </div>
-        <FlightFilters
+        <FlightSort
           :model-value="sortOption"
           @update:model-value="emit('update:sortOption', $event)"
         />
@@ -88,3 +92,105 @@ const fastestDuration = computed(() =>
     </template>
   </section>
 </template>
+
+<style scoped>
+.results-section {
+  padding: 36px 0;
+}
+
+.results-note {
+  margin-top: 6px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.results-list {
+  display: grid;
+  gap: 14px;
+}
+
+.state-card {
+  display: flex;
+  min-height: 140px;
+  align-items: center;
+  gap: 18px;
+  padding: 24px 0;
+  border-top: 1px solid var(--line);
+}
+
+.state-card h2 {
+  margin-bottom: 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.state-card p {
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+.state-card--initial {
+  min-height: 180px;
+  justify-content: center;
+  padding: 32px;
+  border: 1px dashed #bac5c5;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.state-card--initial h2 {
+  font-weight: 700;
+}
+
+.state-icon,
+.loading-mark {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--teal-soft);
+  color: var(--teal);
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.loading-mark {
+  border: 3px solid var(--teal-soft);
+  border-top-color: var(--teal);
+  background: transparent;
+  animation: spin 850ms linear infinite;
+}
+
+.state-card--error .state-icon {
+  background: #fee9e7;
+  color: var(--danger);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .results-section {
+    padding: 28px 0;
+  }
+
+  .state-card {
+    min-height: 140px;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .state-card--initial {
+    min-height: 220px;
+    padding: 24px;
+  }
+}
+</style>
