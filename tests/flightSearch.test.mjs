@@ -5,16 +5,18 @@ import { createServer } from "vite";
 // 沿用 Vite 載入 TypeScript，不另外安裝測試框架或轉譯工具。
 const server = await createServer({
   configFile: false,
-  server: { middlewareMode: true, watch: null },
+  server: { middlewareMode: true, watch: null, ws: false },
 });
 after(() => server.close());
 
 const { validateCriteria, filterOffers, sortOffers } =
   await server.ssrLoadModule("/src/utils/flightSearch.ts");
-const { useFlightSearch } =
-  await server.ssrLoadModule("/src/composables/useFlightSearch.ts");
-const { searchMockFlights } =
-  await server.ssrLoadModule("/src/data/mockFlights.ts");
+const { useFlightSearch } = await server.ssrLoadModule(
+  "/src/composables/useFlightSearch.ts",
+);
+const { searchMockFlights } = await server.ssrLoadModule(
+  "/src/data/mockFlights.ts",
+);
 
 const criteria = {
   tripType: "roundTrip",
@@ -57,7 +59,10 @@ test("成人數必須是 1 到 9 的整數", () => {
 
 test("日期必填且必須存在，回程不能早於去程", () => {
   for (const departureDate of ["", "2026-02-30", "not-a-date"]) {
-    const errors = validateCriteria({ ...criteria, departureDate }, "2026-01-01");
+    const errors = validateCriteria(
+      { ...criteria, departureDate },
+      "2026-01-01",
+    );
     assert.ok(errors.departureDate);
   }
   for (const returnDate of [undefined, "2026-09-30", "2026-10-99"]) {
@@ -76,7 +81,10 @@ test("預設以本地今天驗證，凌晨不能選昨天", (context) => {
   const previousTimezone = process.env.TZ;
   process.env.TZ = "Asia/Taipei";
   try {
-    const errors = validateCriteria({ ...criteria, departureDate: "2026-09-13" });
+    const errors = validateCriteria({
+      ...criteria,
+      departureDate: "2026-09-13",
+    });
     assert.ok(errors.departureDate);
   } finally {
     if (previousTimezone === undefined) delete process.env.TZ;
@@ -98,7 +106,10 @@ test("篩選排除不同航線，來回必須有回程", () => {
     filterOffers([oneWay], { ...criteria, tripType: "oneWay" }),
     [oneWay],
   );
-  assert.deepEqual(filterOffers([offer], { ...criteria, destination: "KIX" }), []);
+  assert.deepEqual(
+    filterOffers([offer], { ...criteria, destination: "KIX" }),
+    [],
+  );
 });
 
 test("排序不改動原資料，價格、去程時間與起飛時刻各自有效", () => {

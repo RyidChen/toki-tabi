@@ -28,6 +28,11 @@ const { sortedOffers, loading, error, hasSearched, sortOption, search } =
       <span class="route-label">台灣 ↔ 日本</span>
     </header>
 
+    <!-- 測試入口目前停用。若恢復下方區塊，請在 script 宣告 const isDevelopment = import.meta.env.DEV。 -->
+    <!-- <nav v-if="isDevelopment" class="page-shell dev-nav" aria-label="本地開發">
+      <RouterLink to="/api-test">本地 API 測試 →</RouterLink>
+    </nav> -->
+
     <section class="hero-section">
       <div class="page-shell hero-grid">
         <div class="hero-copy">
@@ -74,6 +79,14 @@ const { sortedOffers, loading, error, hasSearched, sortOption, search } =
 </template>
 
 <style scoped>
+.dev-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--teal);
+  font-size: 14px;
+}
+
 .site-header {
   display: flex;
   align-items: center;
