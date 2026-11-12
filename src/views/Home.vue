@@ -37,7 +37,7 @@ const { sortedOffers, loading, error, hasSearched, sortOption, search } =
       <div class="page-shell hero-grid">
         <div class="hero-copy">
           <p class="eyebrow">TAIWAN ↔ JAPAN</p>
-          <h1>找到下一趟<br />剛剛好的旅程</h1>
+          <h1>台灣、日本<br />航班比較</h1>
           <p class="hero-description">
             從台灣出發，也能從日本回程。比較時段、價格和飛行時間，快速整理適合你的航班選擇。
           </p>
